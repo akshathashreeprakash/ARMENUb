@@ -440,7 +440,7 @@ export function ItemEditorPage() {
   };
 
   const arUrl = restaurant && itemId && itemId !== 'new'
-    ? `${window.location.origin}/ar/${restaurant.slug}/${itemId}`
+    ? `https://aromale.netlify.app/ar/${restaurant.slug}/${itemId}`
     : null;
 
   if (loading) {
