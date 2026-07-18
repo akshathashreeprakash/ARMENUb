@@ -47,6 +47,10 @@ export function ARViewerPage() {
     isMountedRef.current = true;
     fetchData();
 
+    // Lock page scroll on mobile/phone for AR view
+    document.body.classList.add('ar-viewer-body');
+    document.documentElement.classList.add('ar-viewer-body');
+
     // Check if camera permission was already granted previously
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'camera' as PermissionName }).then((permissionStatus) => {
@@ -60,6 +64,11 @@ export function ARViewerPage() {
 
     return () => {
       isMountedRef.current = false;
+
+      // Remove scroll lock
+      document.body.classList.remove('ar-viewer-body');
+      document.documentElement.classList.remove('ar-viewer-body');
+
       if (mindARRef.current) {
         console.log('Stopping MindAR session during unmount');
         try {
@@ -309,9 +318,9 @@ export function ARViewerPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
+    <div className="fixed inset-0 bg-black overflow-hidden ar-viewer-page">
       {/* Dedicated clean container for MindAR (no React children) */}
-      <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+      <div ref={containerRef} className="absolute inset-0 w-full h-full ar-video-container" />
 
       {/* React UI Overlay Layer */}
       <div className="absolute inset-0 pointer-events-none z-10">

@@ -43,10 +43,9 @@ function TargetImagePlane({ url }: { url: string }) {
     }
   }, [texture]);
 
-  // Render the target image as a flat plane on the ground (X-Z plane)
-  // The model sits on top of it, just like in AR where the image is on the table
+  // Render the target image lying flat in the local X-Y plane (with slightly negative Z so model sits on top)
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+    <mesh position={[0, 0, -0.01]} receiveShadow>
       <planeGeometry args={[1, 1]} />
       <meshStandardMaterial map={texture} transparent opacity={0.85} side={THREE.DoubleSide} />
     </mesh>
@@ -96,8 +95,11 @@ function TransformableScene({
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 5, 5]} intensity={1} castShadow />
       <directionalLight position={[-5, 5, -5]} intensity={0.4} />
-      {targetImageUrl && <TargetImagePlane url={targetImageUrl} />}
-      <Model url={modelUrl} transform={transform} onReady={setMeshObject} />
+      {/* Group representing the MindAR Anchor (with X-Y plane rotated to lie flat on the ground X-Z) */}
+      <group rotation={[-Math.PI / 2, 0, 0]}>
+        {targetImageUrl && <TargetImagePlane url={targetImageUrl} />}
+        <Model url={modelUrl} transform={transform} onReady={setMeshObject} />
+      </group>
       {meshObject && (
         <TransformControls
           object={meshObject}
@@ -118,6 +120,14 @@ function TransformableScene({
     </>
   );
 }
+
+const radToDeg = (rad: number) => {
+  const deg = (rad * 180) / Math.PI;
+  const normalized = ((deg + 180) % 360) - 180;
+  return Math.round(normalized);
+};
+
+const degToRad = (deg: number) => (deg * Math.PI) / 180;
 
 export function ItemEditorPage() {
   const { itemId } = useParams();
@@ -141,8 +151,39 @@ export function ItemEditorPage() {
 
   const [transform, setTransform] = useState(defaultTransform);
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
+  const [posStep, setPosStep] = useState(0.01);
+  const [rotStep, setRotStep] = useState(5);
   const [uiConfig, setUiConfig] = useState<UIElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+
+  const nudgePosition = (axis: 'x' | 'y' | 'z', delta: number) => {
+    setTransform((prev) => ({
+      ...prev,
+      position: {
+        x: prev.position?.x ?? 0,
+        y: prev.position?.y ?? 0,
+        z: prev.position?.z ?? 0,
+        [axis]: Number(((prev.position?.[axis] ?? 0) + delta).toFixed(4)),
+      },
+    }));
+  };
+
+  const nudgeRotation = (axis: 'x' | 'y' | 'z', deltaDeg: number) => {
+    setTransform((prev) => {
+      const currentRad = prev.rotation?.[axis] ?? 0;
+      const currentDeg = (currentRad * 180) / Math.PI;
+      const newDeg = currentDeg + deltaDeg;
+      return {
+        ...prev,
+        rotation: {
+          x: prev.rotation?.x ?? 0,
+          y: prev.rotation?.y ?? 0,
+          z: prev.rotation?.z ?? 0,
+          [axis]: (newDeg * Math.PI) / 180,
+        },
+      };
+    });
+  };
 
   const [activeTab, setActiveTab] = useState<'details' | 'ar' | 'ui' | 'publish'>(
     (searchParams.get('tab') as 'details' | 'ar' | 'ui' | 'publish') || 'details'
@@ -611,8 +652,9 @@ export function ItemEditorPage() {
                   </div>
                 </motion.div>
               )}
-              <div className="grid lg:grid-cols-2 gap-8">
+              <div className="grid lg:grid-cols-2 gap-8 items-start">
                 <div className="space-y-6">
+                  {/* Target Image Card */}
                   <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 p-6">
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-2xl flex items-center justify-center">
@@ -673,6 +715,7 @@ export function ItemEditorPage() {
                     )}
                   </div>
 
+                  {/* 3D Model Card */}
                   <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 p-6">
                     <div className="flex items-center gap-4 mb-6">
                       <div className="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-2xl flex items-center justify-center">
@@ -713,11 +756,227 @@ export function ItemEditorPage() {
                       </motion.div>
                     </label>
                   </div>
+
+                  {/* 3D Transform Settings Card */}
+                  {modelUrl && (
+                    <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 p-6 space-y-5">
+                      <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+                        <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
+                          <Sliders className="w-5 h-5 text-neutral-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-neutral-900">Transform Settings</h3>
+                          <p className="text-xs text-neutral-500">Fine-tune the 3D model offset</p>
+                        </div>
+                      </div>
+
+                      {/* Transform mode switcher */}
+                      <div className="flex gap-2">
+                        {([
+                          { mode: 'translate' as const, icon: Move3d, label: 'Move' },
+                          { mode: 'rotate' as const, icon: RotateCw, label: 'Rotate' },
+                          { mode: 'scale' as const, icon: Maximize2, label: 'Scale' },
+                        ]).map(({ mode, icon: Icon, label }) => (
+                          <button
+                            key={mode}
+                            onClick={() => setTransformMode(mode)}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                              transformMode === mode
+                                ? 'bg-neutral-900 text-white'
+                                : 'bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Position numeric inputs */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Position (meters)</label>
+                          <div className="flex gap-1 bg-white border border-neutral-200 p-0.5 rounded-lg text-[10px] font-mono">
+                            {([0.001, 0.01, 0.05]).map((step) => (
+                              <button
+                                key={step}
+                                type="button"
+                                onClick={() => setPosStep(step)}
+                                className={`px-1.5 py-0.5 rounded transition-colors ${
+                                  posStep === step ? 'bg-neutral-900 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+                                }`}
+                              >
+                                {step}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['x', 'y', 'z'] as const).map((axis) => (
+                            <div key={axis} className="flex items-center gap-0.5 bg-white border border-neutral-200 rounded-xl overflow-hidden px-1">
+                              <button
+                                type="button"
+                                onClick={() => nudgePosition(axis, -posStep)}
+                                className="w-5 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 font-bold hover:bg-neutral-50 rounded select-none"
+                              >
+                                -
+                              </button>
+                              <div className="relative flex-1 min-w-0">
+                                <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-neutral-400 uppercase">{axis}</span>
+                                <input
+                                  type="number"
+                                  step={posStep}
+                                  value={Number((transform.position?.[axis] ?? 0).toFixed(4))}
+                                  onChange={(e) =>
+                                    setTransform({
+                                      ...transform,
+                                      position: {
+                                        x: transform.position?.x ?? 0,
+                                        y: transform.position?.y ?? 0,
+                                        z: transform.position?.z ?? 0,
+                                        [axis]: parseFloat(e.target.value) || 0,
+                                      },
+                                    })
+                                  }
+                                  className="w-full pl-4 pr-1 py-1.5 bg-transparent border-0 text-xs font-mono text-center focus:outline-none text-neutral-900"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => nudgePosition(axis, posStep)}
+                                className="w-5 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 font-bold hover:bg-neutral-50 rounded select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Rotation numeric inputs */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Rotation (degrees)</label>
+                          <div className="flex gap-1 bg-white border border-neutral-200 p-0.5 rounded-lg text-[10px] font-mono">
+                            {([1, 5, 15, 45]).map((step) => (
+                              <button
+                                key={step}
+                                type="button"
+                                onClick={() => setRotStep(step)}
+                                className={`px-1.5 py-0.5 rounded transition-colors ${
+                                  rotStep === step ? 'bg-neutral-900 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+                                }`}
+                              >
+                                {step}°
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['x', 'y', 'z'] as const).map((axis) => (
+                            <div key={axis} className="flex items-center gap-0.5 bg-white border border-neutral-200 rounded-xl overflow-hidden px-1">
+                              <button
+                                type="button"
+                                onClick={() => nudgeRotation(axis, -rotStep)}
+                                className="w-5 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 font-bold hover:bg-neutral-50 rounded select-none"
+                              >
+                                -
+                              </button>
+                              <div className="relative flex-1 min-w-0">
+                                <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-neutral-400 uppercase">{axis}</span>
+                                <input
+                                  type="number"
+                                  step="1"
+                                  value={radToDeg(transform.rotation?.[axis] ?? 0)}
+                                  onChange={(e) => {
+                                    const deg = parseFloat(e.target.value) || 0;
+                                    setTransform({
+                                      ...transform,
+                                      rotation: {
+                                        x: transform.rotation?.x ?? 0,
+                                        y: transform.rotation?.y ?? 0,
+                                        z: transform.rotation?.z ?? 0,
+                                        [axis]: degToRad(deg),
+                                      },
+                                    });
+                                  }}
+                                  className="w-full pl-4 pr-1 py-1.5 bg-transparent border-0 text-xs font-mono text-center focus:outline-none text-neutral-900"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => nudgeRotation(axis, rotStep)}
+                                className="w-5 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 font-bold hover:bg-neutral-50 rounded select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Scale numeric input + slider */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Scale</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="5"
+                            step="0.01"
+                            value={transform.scale ?? 1}
+                            onChange={(e) =>
+                              setTransform({ ...transform, scale: parseFloat(e.target.value) })
+                            }
+                            className="flex-1 accent-neutral-900"
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={transform.scale ?? 1}
+                            onChange={(e) =>
+                              setTransform({ ...transform, scale: parseFloat(e.target.value) || 1 })
+                            }
+                            className="w-20 px-3 py-2 bg-white border border-neutral-200 rounded-xl text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-neutral-900 text-neutral-900"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Z-Height slider — explicit control for height relative to plate surface */}
+                      <div className="space-y-2 pt-2 border-t border-neutral-200">
+                        <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide flex items-center gap-2">
+                          <Sliders className="w-3.5 h-3.5" />
+                          Z-Height (vertical offset from plate surface)
+                        </label>
+                        <input
+                          type="range"
+                          min="-2"
+                          max="2"
+                          step="0.01"
+                          value={transform.position?.z ?? 0}
+                          onChange={(e) =>
+                            setTransform({
+                              ...transform,
+                              position: { x: transform.position?.x ?? 0, y: transform.position?.y ?? 0, z: parseFloat(e.target.value) },
+                            })
+                          }
+                          className="w-full accent-neutral-900"
+                        />
+                        <div className="flex justify-between text-xs text-neutral-400 font-mono">
+                          <span>-2.00 (below)</span>
+                          <span className="font-semibold text-neutral-600">{(transform.position?.z ?? 0).toFixed(2)}</span>
+                          <span>+2.00 (above)</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 overflow-hidden">
+                {/* 3D Preview (Sticky on desktop) */}
+                <div className="lg:sticky lg:top-24 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 overflow-hidden">
                   <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-neutral-900">3D Positioning</h3>
+                    <h3 className="font-semibold text-neutral-900">3D Preview</h3>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -744,132 +1003,6 @@ export function ItemEditorPage() {
                         <p className="text-neutral-400 font-medium">Upload a model to preview</p>
                       </div>
                     )}
-                  </div>
-                  <div className="p-5 space-y-5 bg-neutral-50">
-                    {/* Transform mode switcher */}
-                    <div className="flex gap-2">
-                      {([
-                        { mode: 'translate' as const, icon: Move3d, label: 'Move' },
-                        { mode: 'rotate' as const, icon: RotateCw, label: 'Rotate' },
-                        { mode: 'scale' as const, icon: Maximize2, label: 'Scale' },
-                      ]).map(({ mode, icon: Icon, label }) => (
-                        <button
-                          key={mode}
-                          onClick={() => setTransformMode(mode)}
-                          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                            transformMode === mode
-                              ? 'bg-neutral-900 text-white'
-                              : 'bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Position numeric inputs */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Position</label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {(['x', 'y', 'z'] as const).map((axis) => (
-                          <div key={axis} className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400 uppercase">{axis}</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={transform.position?.[axis] ?? 0}
-                              onChange={(e) =>
-                                setTransform({
-                                  ...transform,
-                                  position: { x: transform.position?.x ?? 0, y: transform.position?.y ?? 0, z: transform.position?.z ?? 0, [axis]: parseFloat(e.target.value) || 0 },
-                                })
-                              }
-                              className="w-full pl-7 pr-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-neutral-900 text-neutral-900"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Rotation numeric inputs */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Rotation (radians)</label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {(['x', 'y', 'z'] as const).map((axis) => (
-                          <div key={axis} className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400 uppercase">{axis}</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={transform.rotation?.[axis] ?? 0}
-                              onChange={(e) =>
-                                setTransform({
-                                  ...transform,
-                                  rotation: { x: transform.rotation?.x ?? 0, y: transform.rotation?.y ?? 0, z: transform.rotation?.z ?? 0, [axis]: parseFloat(e.target.value) || 0 },
-                                })
-                              }
-                              className="w-full pl-7 pr-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-neutral-900 text-neutral-900"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Scale numeric input + slider */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Scale</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="5"
-                          step="0.01"
-                          value={transform.scale ?? 1}
-                          onChange={(e) =>
-                            setTransform({ ...transform, scale: parseFloat(e.target.value) })
-                          }
-                          className="flex-1 accent-neutral-900"
-                        />
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          value={transform.scale ?? 1}
-                          onChange={(e) =>
-                            setTransform({ ...transform, scale: parseFloat(e.target.value) || 1 })
-                          }
-                          className="w-20 px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-mono text-center focus:outline-none focus:ring-2 focus:ring-neutral-900 text-neutral-900"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Z-depth slider — explicit control for depth relative to target plane */}
-                    <div className="space-y-2 pt-2 border-t border-neutral-200">
-                      <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide flex items-center gap-2">
-                        <Sliders className="w-3.5 h-3.5" />
-                        Z-Depth (forward/backward from target)
-                      </label>
-                      <input
-                        type="range"
-                        min="-2"
-                        max="2"
-                        step="0.01"
-                        value={transform.position?.z ?? 0}
-                        onChange={(e) =>
-                          setTransform({
-                            ...transform,
-                            position: { x: transform.position?.x ?? 0, y: transform.position?.y ?? 0, z: parseFloat(e.target.value) },
-                          })
-                        }
-                        className="w-full accent-neutral-900"
-                      />
-                      <div className="flex justify-between text-xs text-neutral-400 font-mono">
-                        <span>-2.00 (back)</span>
-                        <span className="font-semibold text-neutral-600">{(transform.position?.z ?? 0).toFixed(2)}</span>
-                        <span>+2.00 (front)</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
