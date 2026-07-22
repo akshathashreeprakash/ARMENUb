@@ -470,22 +470,50 @@ function UIOverlay({ item, isTracking }: { item: MenuItem; isTracking: boolean }
             }}
           >
             {element.type === 'button' ? (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-6 py-3.5 bg-white text-neutral-900 rounded-2xl font-semibold text-sm shadow-xl"
-              >
-                {element.content}
-              </motion.button>
+              element.style?.preset === 'border-glow' ? (
+                <div className="border-glow-container">
+                  <div className="border-glow-gradient" />
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="border-glow-content px-6 py-3 rounded-[10px] font-semibold text-sm text-center shadow-xl"
+                  >
+                    {element.content}
+                  </motion.button>
+                </div>
+              ) : element.style?.preset === 'neon-border' ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="neon-border-button px-6 py-3.5 rounded-2xl font-semibold text-sm shadow-xl"
+                >
+                  {element.content}
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-6 py-3.5 bg-white text-neutral-900 rounded-2xl font-semibold text-sm shadow-xl"
+                >
+                  {element.content}
+                </motion.button>
+              )
             ) : element.type === 'price' ? (
               <div className="px-5 py-2.5 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-2xl shadow-xl">
                 <span className="text-white font-bold text-xl">{element.content}</span>
               </div>
             ) : element.type === 'wait-time' ? (
-              <div className="px-4 py-2.5 bg-amber-500 rounded-2xl shadow-xl flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-white" />
-                <span className="text-white font-semibold text-sm">{element.content}</span>
-              </div>
+              element.style?.preset === 'fluid-glass' ? (
+                <div className="fluid-glass-badge px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-white fluid-glass-content" />
+                  <span className="text-white font-semibold text-sm fluid-glass-content">{element.content}</span>
+                </div>
+              ) : (
+                <div className="px-4 py-2.5 bg-amber-500 rounded-2xl shadow-xl flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-white" />
+                  <span className="text-white font-semibold text-sm">{element.content}</span>
+                </div>
+              )
             ) : element.type === 'description' ? (
               <div className="px-5 py-4 bg-white/20 backdrop-blur-xl rounded-2xl max-w-[220px] shadow-xl border border-white/20">
                 <p className="text-white text-sm leading-relaxed font-medium">{element.content}</p>

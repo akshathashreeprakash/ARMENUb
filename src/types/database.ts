@@ -44,6 +44,7 @@ export interface UIElement {
     padding?: number;
     opacity?: number;
     border?: boolean;
+    preset?: string;
   };
   action?: {
     type: 'link' | 'whatsapp' | 'phone';

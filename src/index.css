@@ -34,3 +34,140 @@ body.ar-viewer-body {
   max-width: none !important;
 }
 
+/* --- Premium Style Presets for AR Overlay Elements --- */
+
+/* 1. Animated Border Glow (Looping ambient rotation) */
+@keyframes border-glow-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.border-glow-container {
+  position: relative;
+  padding: 2px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(23, 23, 23, 0.4);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.border-glow-gradient {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    #ff007f,
+    #7f00ff,
+    #00f0ff,
+    #ff007f
+  );
+  animation: border-glow-spin 4s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.border-glow-content {
+  position: relative;
+  z-index: 1;
+  background: rgba(17, 17, 17, 0.95);
+  color: white;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+/* 2. Neon Border styling with ambient pulse */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 6px #00f0ff, inset 0 0 3px #00f0ff;
+    border-color: #00f0ff;
+  }
+  50% {
+    box-shadow: 0 0 14px #00f0ff, inset 0 0 7px #00f0ff;
+    border-color: #80f5ff;
+  }
+}
+
+.neon-border-button {
+  background: rgba(10, 10, 10, 0.85) !important;
+  border: 2px solid #00f0ff !important;
+  color: #00f0ff !important;
+  text-shadow: 0 0 8px #00f0ff;
+  animation: neon-pulse 2.5s ease-in-out infinite;
+}
+
+/* 3. Fluid Glass Badge styling (Frosted Glassmorphism + moving fluid color blobs) */
+@keyframes fluid-blob-move-1 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(12px, -8px) scale(1.15);
+  }
+}
+
+@keyframes fluid-blob-move-2 {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(-12px, 8px) scale(1.1);
+  }
+}
+
+.fluid-glass-badge {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  color: white !important;
+}
+
+.fluid-glass-badge::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -30%;
+  width: 90%;
+  height: 90%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.45) 0%, transparent 70%); /* Amber fluid blob */
+  border-radius: 50%;
+  animation: fluid-blob-move-1 5s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.fluid-glass-badge::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  right: -30%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.35) 0%, transparent 70%); /* Red/coral secondary blob */
+  border-radius: 50%;
+  animation: fluid-blob-move-2 6s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.fluid-glass-content {
+  position: relative;
+  z-index: 1;
+}
+
+

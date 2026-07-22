@@ -1018,30 +1018,91 @@ export function ItemEditorPage() {
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="grid lg:grid-cols-3 gap-8"
             >
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 p-6">
-                <h3 className="font-semibold text-neutral-900 mb-6">Add Elements</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { type: 'text' as const, icon: Type, label: 'Text', color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { type: 'price' as const, icon: DollarSign, label: 'Price Tag', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { type: 'wait-time' as const, icon: Clock, label: 'Wait Time', color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { type: 'button' as const, icon: MousePointer2, label: 'Button', color: 'text-violet-600', bg: 'bg-violet-50' },
-                    { type: 'description' as const, icon: ChevronDown, label: 'Description', color: 'text-slate-600', bg: 'bg-slate-50' },
-                  ].map(({ type, icon: Icon, label, color, bg }) => (
-                    <motion.button
-                      key={type}
-                      onClick={() => addUIElement(type)}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center gap-3 p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl transition-all border border-transparent hover:border-neutral-200"
-                    >
-                      <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center`}>
-                        <Icon className={`w-5 h-5 ${color}`} />
-                      </div>
-                      <span className="text-sm font-medium text-neutral-700">{label}</span>
-                    </motion.button>
-                  ))}
+              <div className="space-y-6">
+                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-neutral-200/50 border border-neutral-100 p-6">
+                  <h3 className="font-semibold text-neutral-900 mb-6">Add Elements</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { type: 'text' as const, icon: Type, label: 'Text', color: 'text-blue-600', bg: 'bg-blue-50' },
+                      { type: 'price' as const, icon: DollarSign, label: 'Price Tag', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                      { type: 'wait-time' as const, icon: Clock, label: 'Wait Time', color: 'text-amber-600', bg: 'bg-amber-50' },
+                      { type: 'button' as const, icon: MousePointer2, label: 'Button', color: 'text-violet-600', bg: 'bg-violet-50' },
+                      { type: 'description' as const, icon: ChevronDown, label: 'Description', color: 'text-slate-600', bg: 'bg-slate-50' },
+                    ].map(({ type, icon: Icon, label, color, bg }) => (
+                      <motion.button
+                        key={type}
+                        onClick={() => addUIElement(type)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="flex items-center gap-3 p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl transition-all border border-transparent hover:border-neutral-200"
+                      >
+                        <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center`}>
+                          <Icon className={`w-5 h-5 ${color}`} />
+                        </div>
+                        <span className="text-sm font-medium text-neutral-700">{label}</span>
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
+
+                {selectedElementId && uiConfig.find(el => el.id === selectedElementId) && (() => {
+                  const selectedElement = uiConfig.find(el => el.id === selectedElementId)!;
+                  return (
+                    <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-neutral-100 p-6 space-y-4">
+                      <h3 className="font-semibold text-neutral-900 flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-neutral-500" />
+                        Customize {selectedElement.type === 'wait-time' ? 'Wait Time' : selectedElement.type === 'button' ? 'Action Button' : 'Element'}
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                            Content/Text
+                          </label>
+                          <input
+                            type="text"
+                            value={selectedElement.content}
+                            onChange={(e) => updateUIElement(selectedElement.id, { content: e.target.value })}
+                            className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-800 transition-all"
+                          />
+                        </div>
+
+                        {(selectedElement.type === 'wait-time' || selectedElement.type === 'button') && (
+                          <div>
+                            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider block mb-1.5">
+                              Style Preset
+                            </label>
+                            <select
+                              value={selectedElement.style?.preset || 'default'}
+                              onChange={(e) => {
+                                updateUIElement(selectedElement.id, {
+                                  style: {
+                                    ...selectedElement.style,
+                                    preset: e.target.value
+                                  }
+                                });
+                              }}
+                              className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-800 transition-all"
+                            >
+                              {selectedElement.type === 'wait-time' ? (
+                                <>
+                                  <option value="default">Standard Amber Badge</option>
+                                  <option value="fluid-glass">Fluid Glass Badge</option>
+                                </>
+                              ) : (
+                                <>
+                                  <option value="default">Standard Solid Button</option>
+                                  <option value="border-glow">Border Glow Button</option>
+                                  <option value="neon-border">Neon Border Button</option>
+                                </>
+                              )}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="lg:col-span-2">
@@ -1090,22 +1151,38 @@ export function ItemEditorPage() {
                             onPointerDown={(e) => handlePointerDown(e, element.id)}
                           >
                             {element.type === 'button' ? (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="px-5 py-3 bg-white text-neutral-900 rounded-xl font-semibold text-sm shadow-lg"
-                              >
-                                {element.content}
-                              </motion.button>
+                              element.style?.preset === 'border-glow' ? (
+                                <div className="border-glow-container pointer-events-none">
+                                  <div className="border-glow-gradient" />
+                                  <div className="border-glow-content px-5 py-2.5 rounded-[10px] font-semibold text-sm text-center">
+                                    {element.content}
+                                  </div>
+                                </div>
+                              ) : element.style?.preset === 'neon-border' ? (
+                                <div className="neon-border-button px-5 py-3 rounded-xl font-semibold text-sm shadow-lg pointer-events-none text-center">
+                                  {element.content}
+                                </div>
+                              ) : (
+                                <div className="px-5 py-3 bg-white text-neutral-900 rounded-xl font-semibold text-sm shadow-lg pointer-events-none text-center">
+                                  {element.content}
+                                </div>
+                              )
                             ) : element.type === 'price' ? (
                               <div className="px-4 py-2 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-xl shadow-lg">
                                 <span className="text-white font-bold text-lg">{element.content}</span>
                               </div>
                             ) : element.type === 'wait-time' ? (
-                              <div className="px-4 py-2 bg-amber-500 rounded-xl shadow-lg flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-white" />
-                                <span className="text-white font-semibold text-sm">{element.content}</span>
-                              </div>
+                              element.style?.preset === 'fluid-glass' ? (
+                                <div className="fluid-glass-badge px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-white fluid-glass-content" />
+                                  <span className="text-white font-semibold text-sm fluid-glass-content">{element.content}</span>
+                                </div>
+                              ) : (
+                                <div className="px-4 py-2 bg-amber-500 rounded-xl shadow-lg flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-white" />
+                                  <span className="text-white font-semibold text-sm">{element.content}</span>
+                                </div>
+                              )
                             ) : element.type === 'description' ? (
                               <div className="px-4 py-3 bg-white/20 backdrop-blur-xl rounded-xl max-w-[200px]">
                                 <p className="text-white text-xs leading-relaxed">{element.content}</p>
